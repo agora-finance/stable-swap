@@ -1,0 +1,44 @@
+# To easily switch between profiles add the following to your
+# .bashrc or .zshrc: function profile() { FOUNDRY_PROFILE=$1 "${@:2}" }
+# Then you can invoke like this: `profile test forge build -w`
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config
+
+[profile.default]
+# The source directory
+src = 'src/contracts'
+# The artifact directory
+out = 'out'
+# A list of paths to look for libraries in
+libs = ["node_modules"]
+# Whether or not to enable `vm.ffi`
+ffi = true
+# Enables or disables the optimizer
+optimizer = false
+# The number of optimizer runs
+optimizer_runs = 200 
+# use the via-ir compiler flag
+via_ir = false
+# include metadata hash in bytecode
+bytecode_hash = "none"
+# Whether to append the metadata hash to the bytecode
+cbor_metadata = false
+# Contracts to track with --gas-report
+#gas_reports = []
+ignored_error_codes = [3628, 5574, 2018, 2394]
+evm_version = "cancun"
+
+[fmt]
+single_line_statement_blocks = "single"
+multiline_func_header = "params_first"
+line_length = 120
+tab_width = 4
+bracket_spacing = true
+int_types = "long"
+number_underscore = "thousands"
+sort_imports = true
+contract_new_lines = true
+override_spacing = false
+
+
+

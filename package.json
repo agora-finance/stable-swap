@@ -1,0 +1,30 @@
+{
+  "author": "Drake Evans (x.com/drakeevansv1)",
+  "name": "@agora-finance/stable-swap",
+  "version": "0.1.0",
+  "description": "Contracts for Agora stable-swaps",
+  "scripts": {
+    "test": "",
+    "prepare": "husky install"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "agora-contracts": "github:agora-finance/contracts",
+    "decimal.js": "^10.5.0",
+    "ds-test": "github:dapphub/ds-test",
+    "forge-std": "github:foundry-rs/forge-std",
+    "viem": "^2.22.19"
+  },
+  "devDependencies": {
+    "husky": "^8.0.3",
+    "lint-staged": "^13.3.0",
+    "prettier": "^3.3.2",
+    "solhint-community": "^3.7.0",
+    "solhint-plugin-prettier": "^0.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "type": "module"
+}
