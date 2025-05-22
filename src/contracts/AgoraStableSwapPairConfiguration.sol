@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
 // ====================================================================
@@ -33,8 +33,8 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
     /// @dev Only the access control admin can set the token receiver
     /// @param _tokenReceiver The address of the token receiver
     function setTokenReceiver(address _tokenReceiver) public {
-        // Checks: Only the access control admin can set the token receiver
-        _requireSenderIsRole({ _role: ACCESS_CONTROL_ADMIN_ROLE });
+        // Checks: Only the access control manager can set the token receiver
+        _requireSenderIsRole({ _role: ACCESS_CONTROL_MANAGER_ROLE });
 
         // Effects: Set the token receiver
         _getPointerToStorage().configStorage.tokenReceiverAddress = _tokenReceiver;
@@ -48,7 +48,7 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
     /// @param _feeReceiver The address of the fee receiver
     function setFeeReceiver(address _feeReceiver) public {
         // Checks: Only the access control admin can set the fee receiver
-        _requireSenderIsRole({ _role: ACCESS_CONTROL_ADMIN_ROLE });
+        _requireSenderIsRole({ _role: ACCESS_CONTROL_MANAGER_ROLE });
 
         // Effects: Set the fee receiver
         _getPointerToStorage().configStorage.feeReceiverAddress = _feeReceiver;
@@ -87,7 +87,7 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
         uint256 _maxToken1PurchaseFee
     ) public {
         // Checks: Only the access control admin can set the fee bounds
-        _requireSenderIsRole({ _role: ACCESS_CONTROL_ADMIN_ROLE });
+        _requireSenderIsRole({ _role: ACCESS_CONTROL_MANAGER_ROLE });
 
         // Checks: Ensure the params are valid
         if (_minToken0PurchaseFee > _maxToken0PurchaseFee) revert MinToken0PurchaseFeeGreaterThanMax();
@@ -212,7 +212,7 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
         });
 
         // emit event
-        emit RemoveTokens({ tokenAddress: _tokenAddress, amount: _amount });
+        emit CollectFees({ tokenAddress: _tokenAddress, amount: _amount });
     }
 
     /// @notice The ```setPaused``` function sets the paused state of the pair
@@ -242,7 +242,7 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
         int256 _maxAnnualizedInterestRate
     ) public {
         // Checks: Only the access control admin can set the price bounds
-        _requireSenderIsRole({ _role: ACCESS_CONTROL_ADMIN_ROLE });
+        _requireSenderIsRole({ _role: ACCESS_CONTROL_MANAGER_ROLE });
         // Checks: parameters are valid
         if (_minBasePrice > _maxBasePrice) revert MinBasePriceGreaterThanMaxBasePrice();
         if (_minAnnualizedInterestRate > _maxAnnualizedInterestRate) revert MinAnnualizedInterestRateGreaterThanMax();
