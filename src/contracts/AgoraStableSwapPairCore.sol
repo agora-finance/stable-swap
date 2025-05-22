@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
 // ====================================================================
@@ -14,10 +14,10 @@ pragma solidity ^0.8.28;
 import { AgoraStableSwapAccessControl } from "./AgoraStableSwapAccessControl.sol";
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuardTransient } from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { Erc1967Implementation } from "agora-contracts/proxy/Erc1967Implementation.sol";
 
 import { IUniswapV2Callee } from "./interfaces/IUniswapV2Callee.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -25,7 +25,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @title AgoraStableSwapPairCore
 /// @notice The AgoraStableSwapPairCore is a contract that manages the core logic for the AgoraStableSwapPair
 /// @author Agora
-abstract contract AgoraStableSwapPairCore is AgoraStableSwapAccessControl, Initializable, ReentrancyGuardTransient {
+abstract contract AgoraStableSwapPairCore is
+    AgoraStableSwapAccessControl,
+    Erc1967Implementation,
+    Initializable,
+    ReentrancyGuardTransient
+{
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
@@ -148,10 +153,12 @@ abstract contract AgoraStableSwapPairCore is AgoraStableSwapAccessControl, Initi
         uint256 _token0OverToken1Price,
         uint256 _token1PurchaseFee
     ) public pure returns (uint256 _amount0In, uint256 _token1PurchaseFeeAmount) {
-        _token1PurchaseFeeAmount = (_amount1Out * _token1PurchaseFee) / FEE_PRECISION;
+        _token1PurchaseFeeAmount = (_amount1Out * _token1PurchaseFee) / (FEE_PRECISION - _token1PurchaseFee);
 
         // Always round up the fee
-        if (_token1PurchaseFeeAmount * FEE_PRECISION < _amount1Out * _token1PurchaseFee) _token1PurchaseFeeAmount += 1;
+        if (_token1PurchaseFeeAmount * (FEE_PRECISION - _token1PurchaseFee) < _amount1Out * _token1PurchaseFee) {
+            _token1PurchaseFeeAmount += 1;
+        }
 
         _amount0In = ((_amount1Out + _token1PurchaseFeeAmount) * _token0OverToken1Price) / PRICE_PRECISION;
 
@@ -172,10 +179,12 @@ abstract contract AgoraStableSwapPairCore is AgoraStableSwapAccessControl, Initi
         uint256 _token0OverToken1Price,
         uint256 _token0PurchaseFee
     ) public pure returns (uint256 _amount1In, uint256 _token0FeeAmount) {
-        _token0FeeAmount = (_amount0Out * _token0PurchaseFee) / FEE_PRECISION;
+        _token0FeeAmount = (_amount0Out * _token0PurchaseFee) / (FEE_PRECISION - _token0PurchaseFee);
 
         // Always round up the fee
-        if (_token0FeeAmount * FEE_PRECISION < _amount0Out * _token0PurchaseFee) _token0FeeAmount += 1;
+        if (_token0FeeAmount * (FEE_PRECISION - _token0PurchaseFee) < _amount0Out * _token0PurchaseFee) {
+            _token0FeeAmount += 1;
+        }
 
         _amount1In = ((_amount0Out + _token0FeeAmount) * PRICE_PRECISION) / _token0OverToken1Price;
 
@@ -262,9 +271,6 @@ abstract contract AgoraStableSwapPairCore is AgoraStableSwapAccessControl, Initi
         // Checks: ensure pair not paused
         if (_swapStorage.isPaused) revert PairIsPaused();
 
-        // Checks: proper liquidity available, NOTE: we allow emptying the pair
-        if (_amount0Out > _swapStorage.reserve0 || _amount1Out > _swapStorage.reserve1) revert InsufficientLiquidity();
-
         // Send the tokens (you can only send 1)
         if (_amount0Out > 0) IERC20(_swapStorage.token0).safeTransfer({ to: _to, value: _amount0Out });
         else IERC20(_swapStorage.token1).safeTransfer({ to: _to, value: _amount1Out });
@@ -279,20 +285,24 @@ abstract contract AgoraStableSwapPairCore is AgoraStableSwapAccessControl, Initi
             });
         }
 
-        // Take snapshot of balances
-        uint256 _finalToken0Balance = IERC20(_swapStorage.token0).balanceOf({ account: address(this) });
-        uint256 _finalToken1Balance = IERC20(_swapStorage.token1).balanceOf({ account: address(this) });
-
-        // Calculate how many tokens were transferred
-        uint256 _token0In = _finalToken0Balance > (_swapStorage.reserve0 - _amount0Out)
-            ? _finalToken0Balance - (_swapStorage.reserve0 - _amount0Out)
-            : 0;
-        uint256 _token1In = _finalToken1Balance > (_swapStorage.reserve1 - _amount1Out)
-            ? _finalToken1Balance - (_swapStorage.reserve1 - _amount1Out)
-            : 0;
-
+        uint256 _token0In;
+        uint256 _token1In;
         {
             // Create local scope
+            // Take snapshot of balances
+            uint256 _finalToken0Balance = IERC20(_swapStorage.token0).balanceOf({ account: address(this) });
+            uint256 _finalToken1Balance = IERC20(_swapStorage.token1).balanceOf({ account: address(this) });
+
+            uint256 _previousToken0Balance = _swapStorage.reserve0 + _swapStorage.token0FeesAccumulated;
+            uint256 _previousToken1Balance = _swapStorage.reserve1 + _swapStorage.token1FeesAccumulated;
+
+            // Calculate how many tokens were transferred
+            _token0In = _finalToken0Balance > (_previousToken0Balance - _amount0Out)
+                ? _finalToken0Balance - (_previousToken0Balance - _amount0Out)
+                : 0;
+            _token1In = _finalToken1Balance > (_previousToken1Balance - _amount1Out)
+                ? _finalToken1Balance - (_previousToken1Balance - _amount1Out)
+                : 0;
             uint256 _token0PurchaseFee;
             uint256 _token1PurchaseFee;
 
@@ -318,7 +328,7 @@ abstract contract AgoraStableSwapPairCore is AgoraStableSwapAccessControl, Initi
             }
 
             // emit event
-            emit SwapFees({ token0FeesAccumulated: _token0PurchaseFee, token1FeesAccumulated: _token1PurchaseFee });
+            emit SwapFees({ token0PurchaseFee: _token0PurchaseFee, token1PurchaseFee: _token1PurchaseFee });
 
             // Calculate new fees + reserves in memory struct
             _swapStorage.token0FeesAccumulated += _token0PurchaseFee.toUint128();
@@ -585,6 +595,11 @@ abstract contract AgoraStableSwapPairCore is AgoraStableSwapAccessControl, Initi
     /// @param amount The amount of tokens to remove
     event RemoveTokens(address indexed tokenAddress, uint256 amount);
 
+    /// @notice The ```CollectFees``` event is emitted when fees are collected
+    /// @param tokenAddress The address of the token
+    /// @param amount The amount of tokens to remove
+    event CollectFees(address indexed tokenAddress, uint256 amount);
+
     /// @notice The ```SetPaused``` event is emitted when the pair is paused
     /// @param isPaused The boolean value indicating whether the pair is paused
     event SetPaused(bool isPaused);
@@ -623,9 +638,9 @@ abstract contract AgoraStableSwapPairCore is AgoraStableSwapAccessControl, Initi
     );
 
     /// @notice Emitted when fees are accumulated
-    /// @param token0FeesAccumulated The amount of token0 accumulated as fees
-    /// @param token1FeesAccumulated The amount of token1 accumulated as fees
-    event SwapFees(uint256 token0FeesAccumulated, uint256 token1FeesAccumulated);
+    /// @param token0PurchaseFee The amount of token0 charged as fees
+    /// @param token1PurchaseFee The amount of token1 charged as fees
+    event SwapFees(uint256 token0PurchaseFee, uint256 token1PurchaseFee);
 
     /// @notice Emitted when the reserves are synced
     /// @param reserve0 The reserve of token0

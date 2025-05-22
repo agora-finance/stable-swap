@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
 // ====================================================================
@@ -14,6 +14,7 @@ pragma solidity ^0.8.28;
 
 import { AgoraStableSwapPairConfiguration } from "./AgoraStableSwapPairConfiguration.sol";
 
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -75,6 +76,7 @@ struct InitializeParams {
 /// @author Agora
 contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
     using SafeCast for uint256;
+    using Strings for uint256;
 
     //==============================================================================
     // Constructor & Initalization Functions
@@ -108,7 +110,7 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
         });
 
         // assign roles to deployer for initialization
-        _assignRole({ _role: ACCESS_CONTROL_ADMIN_ROLE, _newAddress: msg.sender, _addRole: true });
+        _assignRole({ _role: ACCESS_CONTROL_MANAGER_ROLE, _newAddress: msg.sender, _addRole: true });
         _assignRole({ _role: PRICE_SETTER_ROLE, _newAddress: msg.sender, _addRole: true });
         _assignRole({ _role: FEE_SETTER_ROLE, _newAddress: msg.sender, _addRole: true });
 
@@ -147,7 +149,7 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
         });
 
         // Remove privileges from deployer
-        _assignRole({ _role: ACCESS_CONTROL_ADMIN_ROLE, _newAddress: msg.sender, _addRole: false });
+        _assignRole({ _role: ACCESS_CONTROL_MANAGER_ROLE, _newAddress: msg.sender, _addRole: false });
         _assignRole({ _role: PRICE_SETTER_ROLE, _newAddress: msg.sender, _addRole: false });
         _assignRole({ _role: FEE_SETTER_ROLE, _newAddress: msg.sender, _addRole: false });
     }
@@ -155,6 +157,28 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
     //==============================================================================
     //  SwapStorage View Functions
     //==============================================================================
+
+    /// @notice The ```name``` function returns the name of the pair
+    /// @return _name The name of the pair
+    function name() public view returns (string memory) {
+        address _token0 = token0();
+        address _token1 = token1();
+        Version memory _version = version();
+        return
+            string(
+                abi.encodePacked(
+                    IERC20Metadata(_token0).symbol(),
+                    "/",
+                    IERC20Metadata(_token1).symbol(),
+                    "-",
+                    _version.major.toString(),
+                    ".",
+                    _version.minor.toString(),
+                    ".",
+                    _version.patch.toString()
+                )
+            );
+    }
 
     /// @notice The ```isPaused``` function returns whether the pair is paused
     /// @return _isPaused Whether the pair is paused
@@ -325,22 +349,24 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
         // instantiate return variables
         _amounts = new uint256[](2);
         _amounts[0] = _amountIn;
+        // instantiate tokenPurchaseFee variable
+        uint256 _tokenPurchaseFee;
 
         // path[1] represents our tokenOut
         if (_path[1] == _swapStorage.token0) {
-            (_amounts[1], ) = getAmount0Out({
+            (_amounts[1], _tokenPurchaseFee) = getAmount0Out({
                 _amount1In: _amountIn,
                 _token0OverToken1Price: _token0OverToken1Price,
                 _token0PurchaseFee: _swapStorage.token0PurchaseFee
             });
-            if (_amounts[1] > _swapStorage.reserve0) revert InsufficientLiquidity();
+            if (_amounts[1] + _tokenPurchaseFee > _swapStorage.reserve0) revert InsufficientLiquidity();
         } else {
-            (_amounts[1], ) = getAmount1Out({
+            (_amounts[1], _tokenPurchaseFee) = getAmount1Out({
                 _amount0In: _amountIn,
                 _token0OverToken1Price: _token0OverToken1Price,
                 _token1PurchaseFee: _swapStorage.token1PurchaseFee
             });
-            if (_amounts[1] > _swapStorage.reserve1) revert InsufficientLiquidity();
+            if (_amounts[1] + _tokenPurchaseFee > _swapStorage.reserve1) revert InsufficientLiquidity();
         }
     }
 
@@ -400,7 +426,7 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
 
     /// @notice The ```version``` function returns the version of the AgoraStableSwapPair
     /// @return _version The version of the AgoraStableSwapPair
-    function version() external pure returns (Version memory _version) {
-        _version = Version({ major: 0, minor: 1, patch: 0 });
+    function version() public pure returns (Version memory _version) {
+        _version = Version({ major: 1, minor: 2, patch: 0 });
     }
 }
