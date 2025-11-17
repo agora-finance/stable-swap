@@ -1,42 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.4;
 
-library AgoraStableSwapPair {
-    struct Version {
-        uint256 major;
-        uint256 minor;
-        uint256 patch;
-    }
-}
-
-interface IAgoraStableSwapPair {
-    struct InitializeParams {
-        address token0;
-        uint8 token0Decimals;
-        address token1;
-        uint8 token1Decimals;
-        uint256 minToken0PurchaseFee;
-        uint256 maxToken0PurchaseFee;
-        uint256 minToken1PurchaseFee;
-        uint256 maxToken1PurchaseFee;
-        uint256 token0PurchaseFee;
-        uint256 token1PurchaseFee;
-        address initialAdminAddress;
-        address initialWhitelister;
-        address initialFeeSetter;
-        address initialTokenRemover;
-        address initialPauser;
-        address initialPriceSetter;
-        address initialTokenReceiver;
-        address initialFeeReceiver;
-        uint256 minBasePrice;
-        uint256 maxBasePrice;
-        int256 minAnnualizedInterestRate;
-        int256 maxAnnualizedInterestRate;
-        uint256 basePrice;
-        int256 annualizedInterestRate;
-    }
-
+interface IAgoraStableSwapPairCore {
     error AddressIsNotRole(string role);
     error AnnualizedInterestRateOutOfBounds();
     error BasePriceOutOfBounds();
@@ -64,7 +29,6 @@ interface IAgoraStableSwapPair {
     error PriceExpired();
     error ReentrancyGuardReentrantCall();
     error RoleNameTooLong();
-    error SafeCastOverflowedIntDowncast(uint8 bits, int256 value);
     error SafeCastOverflowedUintDowncast(uint8 bits, uint256 value);
     error SafeERC20FailedOperation(address token);
 
@@ -116,16 +80,12 @@ interface IAgoraStableSwapPair {
     function WHITELISTER_ROLE() external view returns (string memory);
     function addLiquidity(address _tokenAddress, uint256 _amount) external;
     function assignRole(string memory _role, address _newAddress, bool _addRole) external;
-    function basePrice() external view returns (uint256);
     function calculatePrice(
         uint256 _priceLastUpdated,
         uint256 _timestamp,
         int256 _perSecondInterestRate,
         uint256 _basePrice
     ) external pure returns (uint256 _price);
-    function collectFees(address _tokenAddress, uint256 _amount) external;
-    function configureOraclePrice(uint256 _basePrice, int256 _annualizedInterestRate, uint256 _deadline) external;
-    function feeReceiverAddress() external view returns (address);
     function getAllRoles() external view returns (string[] memory _roles);
     function getAmount0In(
         uint256 _amount1Out,
@@ -147,49 +107,13 @@ interface IAgoraStableSwapPair {
         uint256 _token0OverToken1Price,
         uint256 _token1PurchaseFee
     ) external pure returns (uint256 _amount1Out, uint256 _token1PurchaseFeeAmount);
-    function getAmountsIn(uint256 _amountOut, address[] memory _path) external view returns (uint256[] memory _amounts);
-    function getAmountsOut(uint256 _amountIn, address[] memory _path) external view returns (uint256[] memory _amounts);
     function getPrice() external view returns (uint256 _currentPrice);
     function getPrice(uint256 _timestamp) external view returns (uint256 _price);
-    function getPriceNormalized() external view returns (uint256 _normalizedPrice);
     function getRoleMembers(string memory _role) external view returns (address[] memory _members);
     function hasRole(string memory _role, address _address) external view returns (bool);
     function implementationAddress() external view returns (address);
-    function initialize(InitializeParams memory _params) external;
-    function isPaused() external view returns (bool);
-    function maxAnnualizedInterestRate() external view returns (int256);
-    function maxBasePrice() external view returns (uint256);
-    function maxToken0PurchaseFee() external view returns (uint256);
-    function maxToken1PurchaseFee() external view returns (uint256);
-    function minAnnualizedInterestRate() external view returns (int256);
-    function minBasePrice() external view returns (uint256);
-    function minToken0PurchaseFee() external view returns (uint256);
-    function minToken1PurchaseFee() external view returns (uint256);
-    function name() external view returns (string memory);
-    function perSecondInterestRate() external view returns (int256);
-    function priceLastUpdated() external view returns (uint256);
     function proxyAdminAddress() external view returns (address);
-    function removeTokens(address _tokenAddress, uint256 _amount) external;
     function requireValidPath(address[] memory _path, address _token0, address _token1) external pure;
-    function reserve0() external view returns (uint256);
-    function reserve1() external view returns (uint256);
-    function setApprovedSwappers(address[] memory _approvedSwappers, bool _setApproved) external;
-    function setFeeBounds(
-        uint256 _minToken0PurchaseFee,
-        uint256 _maxToken0PurchaseFee,
-        uint256 _minToken1PurchaseFee,
-        uint256 _maxToken1PurchaseFee
-    ) external;
-    function setFeeReceiver(address _feeReceiver) external;
-    function setOraclePriceBounds(
-        uint256 _minBasePrice,
-        uint256 _maxBasePrice,
-        int256 _minAnnualizedInterestRate,
-        int256 _maxAnnualizedInterestRate
-    ) external;
-    function setPaused(bool _setPaused) external;
-    function setTokenPurchaseFees(uint256 _token0PurchaseFee, uint256 _token1PurchaseFee) external;
-    function setTokenReceiver(address _tokenReceiver) external;
     function swap(uint256 _amount0Out, uint256 _amount1Out, address _to, bytes memory _data) external;
     function swapExactTokensForTokens(
         uint256 _amountIn,
@@ -206,14 +130,4 @@ interface IAgoraStableSwapPair {
         uint256 _deadline
     ) external returns (uint256[] memory _amounts);
     function sync() external;
-    function token0() external view returns (address);
-    function token0Decimals() external view returns (uint8);
-    function token0FeesAccumulated() external view returns (uint256);
-    function token0PurchaseFee() external view returns (uint256);
-    function token1() external view returns (address);
-    function token1Decimals() external view returns (uint8);
-    function token1FeesAccumulated() external view returns (uint256);
-    function token1PurchaseFee() external view returns (uint256);
-    function tokenReceiverAddress() external view returns (address);
-    function version() external pure returns (AgoraStableSwapPair.Version memory _version);
 }
