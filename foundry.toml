@@ -5,18 +5,23 @@
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
 
 [profile.default]
+solc_version = "0.8.28"
 # The source directory
 src = 'src/contracts'
+# the test directoy
+test = 'src/test'
 # The artifact directory
 out = 'out'
+# The script directory
+script = "src/script"
 # A list of paths to look for libraries in
-libs = ["node_modules"]
+libs = ["node_modules", "lib"]
 # Whether or not to enable `vm.ffi`
 ffi = true
 # Enables or disables the optimizer
 optimizer = false
 # The number of optimizer runs
-optimizer_runs = 200 
+optimizer_runs = 200
 # use the via-ir compiler flag
 via_ir = false
 # include metadata hash in bytecode
@@ -27,6 +32,9 @@ cbor_metadata = false
 #gas_reports = []
 ignored_error_codes = [3628, 5574, 2018, 2394]
 evm_version = "cancun"
+
+[rpc_endpoints]
+eth_mainnet = "${ETH_MAINNET_RPC}"
 
 [fmt]
 single_line_statement_blocks = "single"
@@ -40,5 +48,47 @@ sort_imports = true
 contract_new_lines = true
 override_spacing = false
 
+[fuzz]
+# Amount of runs per fuzz test
+runs = 256
 
+[profile.src]
+test = "_"        # Makes building faster
+script = "_"
+optimizer = false
 
+[profile.script]
+src = "_"
+test = "_"
+optimizer = false
+
+[profile.deploy]
+src = "_"
+test = 'src/test'
+optimizer = true
+optimizer_runs = 100_000_000
+via_ir = true
+
+[profile.coverage.fuzz]
+runs = 64
+
+[profile.test]
+src = "_"
+script = "_"
+optimizer = false
+build_info = false
+# extra_output_files = ["evm.assembly"]
+verbosity = 3
+via_ir = false
+
+[profile.test-fuzz]
+src = "_"
+script = "_"
+optimizer = true
+build_info = false
+# extra_output_files = ["evm.assembly"]
+verbosity = 3
+via_ir = true
+optimizer_runs = 1_000_000_000
+[profile.test-fuzz.fuzz]
+runs = 65536

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.28;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 // ====================================================================
 //             _        ______     ___   _______          _
@@ -14,6 +14,7 @@ pragma solidity ^0.8.28;
 
 import { AgoraStableSwapPairConfiguration } from "./AgoraStableSwapPairConfiguration.sol";
 
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -75,6 +76,7 @@ struct InitializeParams {
 /// @author Agora
 contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
     using SafeCast for uint256;
+    using Strings for uint256;
 
     //==============================================================================
     // Constructor & Initalization Functions
@@ -86,7 +88,7 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
 
     /// @notice The ```initialize``` function initializes the AgoraStableSwapPair contract
     /// @param _params The parameters for the initialization
-    function initialize(InitializeParams memory _params) external initializer {
+    function initialize(InitializeParams memory _params) external reinitializer(3) {
         // Check decimals match decimals of token0 and token1
         if (_params.token0Decimals != IERC20Metadata(_params.token0).decimals()) revert IncorrectDecimals();
         if (_params.token1Decimals != IERC20Metadata(_params.token1).decimals()) revert IncorrectDecimals();
@@ -97,18 +99,8 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
         _getPointerToStorage().swapStorage.token1 = _params.token1;
         _getPointerToStorage().configStorage.token1Decimals = _params.token1Decimals;
 
-        // Initialize the access control and oracle
-        _initializeAgoraStableSwapAccessControl({
-            _initialAdminAddress: _params.initialAdminAddress,
-            _initialWhitelister: _params.initialWhitelister,
-            _initialFeeSetter: _params.initialFeeSetter,
-            _initialTokenRemover: _params.initialTokenRemover,
-            _initialPauser: _params.initialPauser,
-            _initialPriceSetter: _params.initialPriceSetter
-        });
-
         // assign roles to deployer for initialization
-        _assignRole({ _role: ACCESS_CONTROL_ADMIN_ROLE, _newAddress: msg.sender, _addRole: true });
+        _assignRole({ _role: ACCESS_CONTROL_MANAGER_ROLE, _newAddress: msg.sender, _addRole: true });
         _assignRole({ _role: PRICE_SETTER_ROLE, _newAddress: msg.sender, _addRole: true });
         _assignRole({ _role: FEE_SETTER_ROLE, _newAddress: msg.sender, _addRole: true });
 
@@ -143,18 +135,42 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
         // Configure the oracle price
         configureOraclePrice({
             _basePrice: _params.basePrice,
-            _annualizedInterestRate: _params.annualizedInterestRate
+            _annualizedInterestRate: _params.annualizedInterestRate,
+            _deadline: block.timestamp
         });
 
         // Remove privileges from deployer
-        _assignRole({ _role: ACCESS_CONTROL_ADMIN_ROLE, _newAddress: msg.sender, _addRole: false });
         _assignRole({ _role: PRICE_SETTER_ROLE, _newAddress: msg.sender, _addRole: false });
         _assignRole({ _role: FEE_SETTER_ROLE, _newAddress: msg.sender, _addRole: false });
+
+        // Initialize the access control and oracle
+        _initializeAgoraStableSwapAccessControl({
+            _initialAdminAddress: _params.initialAdminAddress,
+            _initialWhitelister: _params.initialWhitelister,
+            _initialFeeSetter: _params.initialFeeSetter,
+            _initialTokenRemover: _params.initialTokenRemover,
+            _initialPauser: _params.initialPauser,
+            _initialPriceSetter: _params.initialPriceSetter
+        });
+
+        // Remove privileges from deployer
+        if (_params.initialAdminAddress != msg.sender) {
+            _assignRole({ _role: ACCESS_CONTROL_MANAGER_ROLE, _newAddress: msg.sender, _addRole: false });
+        }
+        sync();
     }
 
     //==============================================================================
     //  SwapStorage View Functions
     //==============================================================================
+
+    /// @notice The ```name``` function returns the name of the pair
+    /// @return _name The name of the pair
+    function name() public view returns (string memory) {
+        address _token0 = token0();
+        address _token1 = token1();
+        return string(abi.encodePacked(IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
+    }
 
     /// @notice The ```isPaused``` function returns whether the pair is paused
     /// @return _isPaused Whether the pair is paused
@@ -311,7 +327,7 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
     /// @notice The ```getAmountsOut``` function calculates the amount of tokenOut returned from a given amount of tokenIn
     /// @param _amountIn The amount of input tokenIn
     /// @param _path The path of the tokens
-    /// @return _amounts The amount of returned output tokenOut
+    /// @return _amounts The amounts of requested tokenIn and calculated tokenOut
     function getAmountsOut(uint256 _amountIn, address[] memory _path) public view returns (uint256[] memory _amounts) {
         SwapStorage memory _swapStorage = _getPointerToStorage().swapStorage;
         uint256 _token0OverToken1Price = getPrice();
@@ -328,34 +344,34 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
 
         // path[1] represents our tokenOut
         if (_path[1] == _swapStorage.token0) {
-            (_amounts[1], ) = getAmount0Out({
+            uint256 _token0PurchaseFeeAmount;
+            (_amounts[1], _token0PurchaseFeeAmount) = getAmount0Out({
                 _amount1In: _amountIn,
                 _token0OverToken1Price: _token0OverToken1Price,
                 _token0PurchaseFee: _swapStorage.token0PurchaseFee
             });
-            if (_amounts[1] > _swapStorage.reserve0) revert InsufficientLiquidity();
+            if (_amounts[1] + _token0PurchaseFeeAmount > _swapStorage.reserve0) revert InsufficientLiquidity();
         } else {
-            (_amounts[1], ) = getAmount1Out({
+            uint256 _token1PurchaseFeeAmount;
+            (_amounts[1], _token1PurchaseFeeAmount) = getAmount1Out({
                 _amount0In: _amountIn,
                 _token0OverToken1Price: _token0OverToken1Price,
                 _token1PurchaseFee: _swapStorage.token1PurchaseFee
             });
-            if (_amounts[1] > _swapStorage.reserve1) revert InsufficientLiquidity();
+            if (_amounts[1] + _token1PurchaseFeeAmount > _swapStorage.reserve1) revert InsufficientLiquidity();
         }
     }
 
     /// @notice The ```getAmountsIn``` function calculates the amount of input tokensIn required for a given amount tokensOut
     /// @param _amountOut The amount of output tokenOut
     /// @param _path The path of the tokens
-    /// @return _amounts The amount of required input tokenIn
+    /// @return _amounts The amounts of calculated tokenIn and requested tokenOut
     function getAmountsIn(uint256 _amountOut, address[] memory _path) public view returns (uint256[] memory _amounts) {
         SwapStorage memory _swapStorage = _getPointerToStorage().swapStorage;
         uint256 _token0OverToken1Price = getPrice();
 
         // Checks: path length is 2 && path must contain token0 and token1 only
         requireValidPath({ _path: _path, _token0: _swapStorage.token0, _token1: _swapStorage.token1 });
-        if (_path[1] == _swapStorage.token0 && _amountOut > _swapStorage.reserve0) revert InsufficientLiquidity();
-        if (_path[1] == _swapStorage.token1 && _amountOut > _swapStorage.reserve1) revert InsufficientLiquidity();
 
         // Checks: amountOut is greater than 0
         if (_amountOut == 0) revert InsufficientOutputAmount();
@@ -367,17 +383,21 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
 
         // path[0] represents our tokenIn
         if (_path[0] == _swapStorage.token0) {
-            (_amounts[0], ) = getAmount0In({
+            uint256 _token1PurchaseFeeAmount;
+            (_amounts[0], _token1PurchaseFeeAmount) = getAmount0In({
                 _amount1Out: _amountOut,
                 _token0OverToken1Price: _token0OverToken1Price,
                 _token1PurchaseFee: _swapStorage.token1PurchaseFee
             });
+            if (_amountOut + _token1PurchaseFeeAmount > _swapStorage.reserve1) revert InsufficientLiquidity();
         } else {
-            (_amounts[0], ) = getAmount1In({
+            uint256 _token0PurchaseFeeAmount;
+            (_amounts[0], _token0PurchaseFeeAmount) = getAmount1In({
                 _amount0Out: _amountOut,
                 _token0OverToken1Price: _token0OverToken1Price,
                 _token0PurchaseFee: _swapStorage.token0PurchaseFee
             });
+            if (_amountOut + _token0PurchaseFeeAmount > _swapStorage.reserve0) revert InsufficientLiquidity();
         }
     }
 
@@ -400,7 +420,7 @@ contract AgoraStableSwapPair is AgoraStableSwapPairConfiguration {
 
     /// @notice The ```version``` function returns the version of the AgoraStableSwapPair
     /// @return _version The version of the AgoraStableSwapPair
-    function version() external pure returns (Version memory _version) {
-        _version = Version({ major: 0, minor: 1, patch: 0 });
+    function version() public pure returns (Version memory _version) {
+        _version = Version({ major: 2, minor: 2, patch: 0 });
     }
 }

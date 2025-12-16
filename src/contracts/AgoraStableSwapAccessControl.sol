@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.28;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 // ====================================================================
 //             _        ______     ___   _______          _
@@ -39,6 +39,11 @@ abstract contract AgoraStableSwapAccessControl is AgoraAccessControl {
     /// @notice The ```_initializeAgoraStableSwapAccessControl``` function initializes the AgoraStableSwapAccessControl contract
     /// @dev This function adds the default roles that are required by the AgoraStableSwapPair
     /// @param _initialAdminAddress The address of the initial admin
+    /// @param _initialWhitelister The address of the initial whitelister
+    /// @param _initialFeeSetter The address of the initial feeSetter
+    /// @param _initialTokenRemover The address of the initial tokenRemover
+    /// @param _initialPauser The address of the initial pauser
+    /// @param _initialPriceSetter The address of the initial priceSetter
     function _initializeAgoraStableSwapAccessControl(
         address _initialAdminAddress,
         address _initialWhitelister,

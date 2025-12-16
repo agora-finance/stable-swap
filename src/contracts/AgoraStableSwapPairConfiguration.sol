@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.28;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity 0.8.28;
 
 // ====================================================================
 //             _        ______     ___   _______          _
@@ -30,11 +30,11 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
     //==============================================================================
 
     /// @notice The ```setTokenReceiver``` function sets the token receiver
-    /// @dev Only the access control admin can set the token receiver
+    /// @dev Only the access control manager can set the token receiver
     /// @param _tokenReceiver The address of the token receiver
     function setTokenReceiver(address _tokenReceiver) public {
-        // Checks: Only the access control admin can set the token receiver
-        _requireSenderIsRole({ _role: ACCESS_CONTROL_ADMIN_ROLE });
+        // Checks: Only the access control manager can set the token receiver
+        _requireSenderIsRole({ _role: ACCESS_CONTROL_MANAGER_ROLE });
 
         // Effects: Set the token receiver
         _getPointerToStorage().configStorage.tokenReceiverAddress = _tokenReceiver;
@@ -44,11 +44,11 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
     }
 
     /// @notice The ```setFeeReceiver``` function sets the fee receiver
-    /// @dev Only the access control admin can set the fee receiver
+    /// @dev Only the access control manager can set the fee receiver
     /// @param _feeReceiver The address of the fee receiver
     function setFeeReceiver(address _feeReceiver) public {
-        // Checks: Only the access control admin can set the fee receiver
-        _requireSenderIsRole({ _role: ACCESS_CONTROL_ADMIN_ROLE });
+        // Checks: Only the access control manager can set the fee receiver
+        _requireSenderIsRole({ _role: ACCESS_CONTROL_MANAGER_ROLE });
 
         // Effects: Set the fee receiver
         _getPointerToStorage().configStorage.feeReceiverAddress = _feeReceiver;
@@ -75,7 +75,7 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
     }
 
     /// @notice The ```setFeeBounds``` function sets the fee bounds
-    /// @dev Only the access control admin can set the fee bounds
+    /// @dev Only the access control manager can set the fee bounds
     /// @param _minToken0PurchaseFee The minimum purchase fee for token0
     /// @param _maxToken0PurchaseFee The maximum purchase fee for token0
     /// @param _minToken1PurchaseFee The minimum purchase fee for token1
@@ -86,8 +86,8 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
         uint256 _minToken1PurchaseFee,
         uint256 _maxToken1PurchaseFee
     ) public {
-        // Checks: Only the access control admin can set the fee bounds
-        _requireSenderIsRole({ _role: ACCESS_CONTROL_ADMIN_ROLE });
+        // Checks: Only the access control manager can set the fee bounds
+        _requireSenderIsRole({ _role: ACCESS_CONTROL_MANAGER_ROLE });
 
         // Checks: Ensure the params are valid
         if (_minToken0PurchaseFee > _maxToken0PurchaseFee) revert MinToken0PurchaseFeeGreaterThanMax();
@@ -190,9 +190,6 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
             revert InsufficientTokens();
         }
 
-        // Interactions: transfer fees from the pair to the fee receiver
-        IERC20(_tokenAddress).safeTransfer({ to: _configStorage.feeReceiverAddress, value: _amount });
-
         // Calculate fees accumulated based on which token was transferred out
         if (_tokenAddress == _swapStorage.token0) {
             _swapStorage.token0FeesAccumulated -= _amount.toUint128();
@@ -203,6 +200,9 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
             revert InvalidTokenAddress();
         }
 
+        // Interactions: transfer fees from the pair to the fee receiver
+        IERC20(_tokenAddress).safeTransfer({ to: _configStorage.feeReceiverAddress, value: _amount });
+
         // Update reserves + fees accumulated
         _sync({
             _token0Balance: IERC20(_swapStorage.token0).balanceOf(address(this)),
@@ -212,7 +212,7 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
         });
 
         // emit event
-        emit RemoveTokens({ tokenAddress: _tokenAddress, amount: _amount });
+        emit CollectFees({ tokenAddress: _tokenAddress, amount: _amount });
     }
 
     /// @notice The ```setPaused``` function sets the paused state of the pair
@@ -230,7 +230,7 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
     }
 
     /// @notice The ```setOraclePriceBounds``` function sets the price bounds for the pair
-    /// @dev Only the access control admin can set the price bounds
+    /// @dev Only the access control manager can set the price bounds
     /// @param _minBasePrice The minimum allowed initial base price
     /// @param _maxBasePrice The maximum allowed initial base price
     /// @param _minAnnualizedInterestRate The minimum allowed annualized interest rate
@@ -241,8 +241,8 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
         int256 _minAnnualizedInterestRate,
         int256 _maxAnnualizedInterestRate
     ) public {
-        // Checks: Only the access control admin can set the price bounds
-        _requireSenderIsRole({ _role: ACCESS_CONTROL_ADMIN_ROLE });
+        // Checks: Only the access control manager can set the price bounds
+        _requireSenderIsRole({ _role: ACCESS_CONTROL_MANAGER_ROLE });
         // Checks: parameters are valid
         if (_minBasePrice > _maxBasePrice) revert MinBasePriceGreaterThanMaxBasePrice();
         if (_minAnnualizedInterestRate > _maxAnnualizedInterestRate) revert MinAnnualizedInterestRateGreaterThanMax();
@@ -266,9 +266,12 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
     /// @dev Only the price setter can configure the price
     /// @param _basePrice The base price of the pair
     /// @param _annualizedInterestRate The annualized interest rate
-    function configureOraclePrice(uint256 _basePrice, int256 _annualizedInterestRate) public {
+    /// @param _deadline The deadline for the price configuration
+    function configureOraclePrice(uint256 _basePrice, int256 _annualizedInterestRate, uint256 _deadline) public {
         // Checks: Only the price setter can configure the price
         _requireSenderIsRole({ _role: PRICE_SETTER_ROLE });
+        // Checks: block.timestamp must be less than deadline
+        if (_deadline < block.timestamp) revert PriceExpired();
 
         ConfigStorage memory _configStorage = _getPointerToStorage().configStorage;
 
@@ -286,7 +289,7 @@ abstract contract AgoraStableSwapPairConfiguration is AgoraStableSwapPairCore {
         // Effects: Convert yearly APR to per second APR
         _getPointerToStorage().swapStorage.perSecondInterestRate = (_annualizedInterestRate / 365 days).toInt72();
         // Effects: Set the price of the asset
-        _getPointerToStorage().swapStorage.basePrice = (_basePrice).toUint64();
+        _getPointerToStorage().swapStorage.basePrice = _basePrice;
 
         // emit event
         emit ConfigureOraclePrice(_basePrice, _annualizedInterestRate);

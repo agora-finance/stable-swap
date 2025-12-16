@@ -1,17 +1,15 @@
 {
   "author": "Drake Evans (x.com/drakeevansv1)",
   "name": "@agora-finance/stable-swap",
-  "version": "0.1.0",
+  "version": "2.2.0",
   "description": "Contracts for Agora stable-swaps",
-  "scripts": {
-    "test": "",
-    "prepare": "husky install"
-  },
+  "scripts": {},
   "license": "Apache-2.0",
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.1",
-    "@openzeppelin/contracts-upgradeable": "^5.0.2",
-    "agora-contracts": "github:agora-finance/contracts",
+    "@openzeppelin/contracts": "5.2.0",
+    "@openzeppelin/contracts-upgradeable": "5.2.0",
+    "agora-contracts": "github:agora-finance/contracts#5d4b2e69545d7eabc0596210121af639742494ce",
+    "createx": "github:pcaversaccio/createx",
     "decimal.js": "^10.5.0",
     "ds-test": "github:dapphub/ds-test",
     "forge-std": "github:foundry-rs/forge-std",
