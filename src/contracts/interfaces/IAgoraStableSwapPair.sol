@@ -9,7 +9,7 @@ library AgoraStableSwapPair {
     }
 }
 
-interface IAgoraStableSwapPair {
+interface Interface {
     struct InitializeParams {
         address token0;
         uint8 token0Decimals;
@@ -68,7 +68,6 @@ interface IAgoraStableSwapPair {
     error SafeCastOverflowedUintDowncast(uint8 bits, uint256 value);
     error SafeERC20FailedOperation(address token);
 
-    event AddLiquidity(address indexed tokenAddress, uint256 amount);
     event CollectFees(address indexed tokenAddress, uint256 amount);
     event ConfigureOraclePrice(uint256 basePrice, int256 annualizedInterestRate);
     event Initialized(uint64 version);

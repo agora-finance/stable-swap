@@ -1,16 +1,9 @@
 {
   "author": "Drake Evans (x.com/drakeevansv1)",
   "name": "@agora-finance/stable-swap",
-  "version": "0.0.1",
+  "version": "2.2.0",
   "description": "Contracts for Agora stable-swaps",
-  "scripts": {
-    "test": "forge test",
-    "prepare": "husky install",
-    "format": "forge fmt src && prettier --config ./.prettierrc.json --write src",
-    "format:check": "prettier --config ./.prettierrc.json --check src",
-    "generate:constants": "ts-node -T scripts/generateConstants.ts",
-    "lint": "solhint --config ./.solhint.json src/**/*.sol"
-  },
+  "scripts": {},
   "license": "Apache-2.0",
   "dependencies": {
     "@openzeppelin/contracts": "5.2.0",
