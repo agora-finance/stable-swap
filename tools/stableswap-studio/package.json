@@ -1,0 +1,32 @@
+{
+  "name": "agora-stableswap-studio",
+  "version": "1.0.0",
+  "description": "Multi-Pool Liquidity Simulator, Invariant Math Engine & Cross-DEX Arbitrage Scanner for Agora StableSwap.",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": {
+    "stableswap-cli": "./bin/stableswap-cli.js"
+  },
+  "scripts": {
+    "start": "node src/server/app.js",
+    "cli": "node bin/stableswap-cli.js",
+    "test": "node tests/run-all.js"
+  },
+  "keywords": [
+    "agora",
+    "stableswap",
+    "ausd",
+    "curve-invariant",
+    "liquidity-pool",
+    "arbitrage-scanner",
+    "defi"
+  ],
+  "author": "Agora Finance Community",
+  "license": "BUSL-1.1",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5",
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agora StableSwap Studio • Multi-Pool DEX & Arbitrage Scanner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo-area">
+      <div class="logo-badge">
+        <span class="logo-glow"></span>
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </div>
+      <div>
+        <h1 class="brand-title">AGORA <span class="badge-swap">STABLESWAP</span></h1>
+        <p class="brand-subtitle">Multi-Pool Invariant DEX • Low-Slippage RWA & Stablecoin Swaps (A=200)</p>
+      </div>
+    </div>
+
+    <!-- Active Liquidity Meter -->
+    <div class="tvl-meter">
+      <span class="pulse-dot"></span>
+      <span id="header-tvl">$90,200,000 TVL</span>
+      <span class="a-tag">A = 200</span>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-tab="swap">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+      StableSwap DEX
+    </button>
+    <button class="nav-tab" data-tab="pools">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+      Liquidity Pools & APY
+    </button>
+    <button class="nav-tab" data-tab="arbitrage">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+      Cross-DEX Arbitrage Scanner
+    </button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Tab 1: Swap -->
+    <section id="tab-swap" class="tab-pane active">
+      <div class="hero-card">
+        <div class="hero-content">
+          <div class="pill-highlight">🌊 Stable Invariant Curve Math</div>
+          <h2>Ultra-Low Slippage Institutional Swaps</h2>
+          <p>
+            Powered by Agora's specialized invariant curve with amplification coefficient $A = 200$, execute multi-million dollar stablecoin swaps with minimal price impact.
+          </p>
+        </div>
+      </div>
+
+      <div class="layout-grid mt-4">
+        <!-- Swap Card -->
+        <div class="card">
+          <div class="card-header">
+            <h3>🔄 Swap Tokens</h3>
+          </div>
+
+          <form id="swap-form" class="token-form">
+            <div class="form-group">
+              <label>Select Pool</label>
+              <select id="select-pool" class="form-input"></select>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label>You Pay</label>
+                <select id="swap-in-token" class="form-input"></select>
+              </div>
+              <div class="form-group">
+                <label>Amount</label>
+                <input type="number" id="swap-in-amount" class="form-input" value="10000" min="1" required />
+              </div>
+            </div>
+
+            <div class="swap-quote-box mt-2">
+              <div class="quote-row"><span>Estimated Output:</span> <strong id="quote-output" style="color: #34d399;">--</strong></div>
+              <div class="quote-row"><span>Price Impact:</span> <span id="quote-impact">0.0001%</span></div>
+              <div class="quote-row"><span>Trading Fee (0.04%):</span> <span id="quote-fee">--</span></div>
+            </div>
+
+            <button type="submit" class="btn btn-gradient btn-lg mt-3" id="btn-exec-swap">
+              🌊 Execute StableSwap
+            </button>
+          </form>
+
+          <div id="swap-result-box" class="mt-3"></div>
+        </div>
+
+        <!-- Pool Depth & Live History -->
+        <div class="card">
+          <div class="card-header">
+            <h3>📜 Recent Swaps</h3>
+          </div>
+          <div class="ledger-list" id="swaps-history-list">
+            <div class="empty-state">No swaps executed yet.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Pools -->
+    <section id="tab-pools" class="tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <h3>🌊 Agora StableSwap Pools</h3>
+        </div>
+        <div class="pools-grid" id="pools-container"></div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Arbitrage Scanner -->
+    <section id="tab-arbitrage" class="tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <h3>⚡ Real-Time Cross-DEX Arbitrage Scanner</h3>
+          <button class="btn btn-secondary btn-sm" id="btn-refresh-arb">🔄 Scan Spreads</button>
+        </div>
+        <div class="arbitrage-grid" id="arb-container"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>Agora StableSwap Studio • Powered by BUSL-1.1 Invariant Architecture • Open Source</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
